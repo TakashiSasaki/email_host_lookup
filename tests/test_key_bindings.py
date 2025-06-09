@@ -1,6 +1,4 @@
 import pytest
-import asyncio
-from textual.pilot import Pilot
 from email_host_lookup.email_host_lookup_screen import EmailHostLookupApp
 
 # Copied and adapted function:
