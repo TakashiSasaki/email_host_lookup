@@ -24,7 +24,7 @@ def get_email_host_lookup_screen() -> Optional["Screen"]:
         import asyncio
         import dns.resolver
 
-        class EmailHostLookupScreen(Screen):
+        class EmailHostLookupScreen(Screen): # Moved class definition inside try
             """Screen to input an email address and display its hosting provider."""
 
             BINDINGS = [("q", "app.quit", "Quit")]
@@ -62,31 +62,32 @@ def get_email_host_lookup_screen() -> Optional["Screen"]:
                     output.write(f"[red]Failed to resolve MX records: {e}[/red]")
                     return
 
-                provider = detect_provider(mx_hosts)
+                provider = detect_provider(mx_hosts) # Calls the top-level function
                 output.write(f"[cyan]Likely mail provider:[/cyan] {provider}")
 
-        def detect_provider(mx_hosts: list[str]) -> str:
-            for host in mx_hosts:
-                if "google.com" in host:
-                    return "Google Workspace"
-                elif "outlook.com" in host or "protection.outlook.com" in host:
-                    return "Microsoft 365"
-                elif "yahoodns.net" in host:
-                    return "Yahoo Mail"
-                elif "zoho.com" in host:
-                    return "Zoho Mail"
-                elif "protonmail" in host:
-                    return "ProtonMail"
-                elif "fastmail" in host:
-                    return "Fastmail"
-            return "Unknown or Custom Provider"
-
-        if _instance is None:
+        if _instance is None: # Moved instantiation inside try
             _instance = EmailHostLookupScreen()
-        return _instance
-    except ImportError:
+        return _instance # Moved return inside try
+    except ImportError: # Correctly paired with the try block
         # Textual or dependencies not installed
         return None
+
+def detect_provider(mx_hosts: list[str]) -> str:
+    """Detects the email provider from a list of MX host strings."""
+    for host in mx_hosts:
+        if "google.com" in host:
+            return "Google Workspace"
+        elif "outlook.com" in host or "protection.outlook.com" in host:
+            return "Microsoft 365"
+        elif "yahoodns.net" in host:
+            return "Yahoo Mail"
+        elif "zoho.com" in host:
+            return "Zoho Mail"
+        elif "protonmail" in host:
+            return "ProtonMail"
+        elif "fastmail" in host:
+            return "Fastmail"
+    return "Unknown or Custom Provider"
 
 # ==== 単体起動用メインエントリポイント ====
 if __name__ == "__main__":

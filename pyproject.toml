@@ -6,7 +6,10 @@ authors = ["Your Name <you@example.com>"] # Please replace with actual author if
 readme = "README.txt"
 
 [tool.poetry.dependencies]
-python = "^3.8" # Assuming Python 3.8+ as a reasonable default
+python = "^3.9" # Upgraded to support latest pytest
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.0"
 
 [build-system]
 requires = ["poetry-core"]
