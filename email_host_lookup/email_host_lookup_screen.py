@@ -4,67 +4,84 @@
 from typing import Optional, TYPE_CHECKING
 import asyncio
 import sys
+from .email_host_lookup import get_email_host_info # Import the core logic
+
+# Ensure all necessary imports for the screen are here at module level
+from textual.screen import Screen
+from textual.widgets import Input, Button, Static, RichLog # Reverted to RichLog
+from textual.containers import Vertical # Added Vertical
 
 if TYPE_CHECKING:
-    from textual.screen import Screen
+    pass # Screen was already imported above, TYPE_CHECKING block can be simplified or removed if not strictly needed for other types
 
-_instance: Optional["Screen"] = None
+_instance: Optional["EmailHostLookupScreen"] = None # Changed type hint
+
+class EmailHostLookupScreen(Screen):
+    """Screen to input an email address and display its hosting provider."""
+
+    BINDINGS = [("ctrl+w", "app.quit", "Quit")] # Correct binding
+
+    def compose(self): # Full original compose
+        # Test write during compose
+        output_log = RichLog(highlight=True, id="output_log", max_lines=20) # Reverted to RichLog
+        # output_log.write("Compose time test message") # This might not work as expected if log isn't fully ready
+
+        yield Vertical(
+            Static("Enter an email address to lookup its mail host:", id="prompt"),
+            Input(placeholder="user@example.com", id="email_input"),
+            Button("Lookup", id="lookup_button"),
+            output_log # use the instance
+        )
+
+    # def on_mount(self) -> None: # Removed test message
+    #     # Test write after mount, RichLog should be ready
+    #     # log = self.query_one(RichLog)
+    #     # log.write("Mount time test message")
+
+
+    async def on_button_pressed(self, event: Button.Pressed) -> None: # Make it async
+        if event.button.id == "lookup_button":
+            email_input = self.query_one("#email_input", Input).value
+            self.set_focus(None) # Important original line
+            await self.lookup_and_display(email_input) # Await the task
+            # Add a small sleep *within the event handler* after the work is done.
+            await asyncio.sleep(0.1)
+
+    async def lookup_and_display(self, email: str) -> None: # Full original method
+        output = self.query_one("#output_log", RichLog) # Reverted to RichLog
+        output.clear()
+        # output.write("LAD_AFTER_CLEAR") # DEBUG: Write *after* clear, before conditions - REMOVING for this revert.
+        # The original debug write for LAD_AFTER_CLEAR should be removed if this is a full revert to previous state.
+        # For now, keeping it to see if RichLog behaves differently after all.
+        output.write("LAD_AFTER_CLEAR")
+
+
+        if "@" not in email:
+            output.write("[red]Invalid email address[/red]") # Reverted to RichLog formatting
+            return
+
+        domain = email.split("@")[-1]
+        output.write(f"[bold]Looking up MX records for:[/bold] {domain}") # Reverted to RichLog formatting
+
+        try:
+            # Use the imported function from email_host_lookup.py
+            _, mx_hosts, provider = await get_email_host_info(domain)
+            output.write(f"[green]MX Records:[/green] {', '.join(mx_hosts)}") # Reverted to RichLog formatting
+            output.write(f"[cyan]Likely mail provider:[/cyan] {provider}") # Reverted to RichLog formatting
+        except Exception as e:
+            output.write(f"[red]Failed to resolve: {e}[/red]") # Reverted to RichLog formatting
+            return
 
 # THIS IS THE CRUCIAL PART TO GET RIGHT - FULL ORIGINAL SCREEN LOGIC
-def get_email_host_lookup_screen() -> Optional["Screen"]:
+def get_email_host_lookup_screen() -> Optional[EmailHostLookupScreen]: # Changed return type hint
     global _instance
     try:
-        # Ensure all necessary imports for the screen are here
-        from textual.screen import Screen
-        from textual.widgets import Input, Button, Static, RichLog
-        from textual.containers import Vertical
-        # import dns.resolver # No longer directly used here, moved to email_host_lookup.py
-        from .email_host_lookup import get_email_host_info # Import the core logic
-
-        class EmailHostLookupScreen(Screen):
-            """Screen to input an email address and display its hosting provider."""
-
-            BINDINGS = [("ctrl+w", "app.quit", "Quit")] # Correct binding
-
-            def compose(self): # Full original compose
-                yield Vertical(
-                    Static("Enter an email address to lookup its mail host:", id="prompt"),
-                    Input(placeholder="user@example.com", id="email_input"),
-                    Button("Lookup", id="lookup_button"),
-                    RichLog(highlight=True, id="output_log", max_lines=20) # Changed TextLog to RichLog
-                )
-
-            def on_button_pressed(self, event: Button.Pressed) -> None: # Full original method
-                if event.button.id == "lookup_button":
-                    email_input = self.query_one("#email_input", Input).value
-                    self.set_focus(None) # Important original line
-                    asyncio.create_task(self.lookup_and_display(email_input))
-
-            async def lookup_and_display(self, email: str) -> None: # Full original method
-                output = self.query_one("#output_log", RichLog) # Changed TextLog to RichLog
-                output.clear()
-
-                if "@" not in email:
-                    output.write("[red]Invalid email address[/red]")
-                    return
-
-                domain = email.split("@")[-1]
-                output.write(f"[bold]Looking up MX records for:[/bold] {domain}")
-
-                try:
-                    # Use the imported function from email_host_lookup.py
-                    _, mx_hosts, provider = await get_email_host_info(domain)
-                    output.write(f"[green]MX Records:[/green] {', '.join(mx_hosts)}")
-                    output.write(f"[cyan]Likely mail provider:[/cyan] {provider}")
-                except Exception as e:
-                    output.write(f"[red]Failed to resolve: {e}[/red]") # Simplified error message
-                    return
-
+        # Class EmailHostLookupScreen is now defined at module level
         if _instance is None:
             _instance = EmailHostLookupScreen()
         return _instance
-    except ImportError:
-        # Textual or dependencies not installed
+    except ImportError: # Should primarily catch issues with textual itself if not installed
+        # Textual or core dependencies not installed
         return None
 
 # def detect_provider(mx_hosts: list[str]) -> str: # MOVED to email_host_lookup.py
@@ -92,6 +109,9 @@ from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer # Added import
 
 class EmailHostLookupApp(App): # Moved class definition
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+    ]
     CSS = """
     #prompt { margin-bottom: 1; }
     #output_log { height: 7; }
