@@ -61,29 +61,31 @@ def get_email_host_lookup_screen() -> Optional["Screen"]:
                 provider = detect_provider(mx_hosts) # Uses detect_provider below
                 output.write(f"[cyan]Likely mail provider:[/cyan] {provider}")
 
-        def detect_provider(mx_hosts: list[str]) -> str: # Full original method
-            for host in mx_hosts:
-                if "google.com" in host:
-                    return "Google Workspace"
-                elif "outlook.com" in host or "protection.outlook.com" in host:
-                    return "Microsoft 365"
-                elif "yahoodns.net" in host:
-                    return "Yahoo Mail"
-                elif "zoho.com" in host:
-                    return "Zoho Mail"
-                elif "protonmail" in host:
-                    return "ProtonMail"
-                elif "fastmail" in host:
-                    return "Fastmail"
-            return "Unknown or Custom Provider"
-
-        if _instance is None:
+        if _instance is None: # Moved instantiation inside try
             _instance = EmailHostLookupScreen()
-        # print("get_email_host_lookup_screen: Successfully created EmailHostLookupScreen instance.") # Removed debug print
-        return _instance
-    except ImportError as e:
-        # print(f"get_email_host_lookup_screen: Failed to import dependencies, returning None. Error: {e}", file=sys.stderr) # Removed debug print
-        return None # This is key: if this returns None, app shows error message
+        return _instance # Moved return inside try
+    except ImportError: # Correctly paired with the try block
+        # Textual or dependencies not installed
+        return None
+
+def detect_provider(mx_hosts: list[str]) -> str: # Full original method
+    """Detects the email provider from a list of MX host strings."""
+    for host in mx_hosts:
+        if "google.com" in host:
+            return "Google Workspace"
+        elif "outlook.com" in host or "protection.outlook.com" in host:
+            return "Microsoft 365"
+        elif "yahoodns.net" in host:
+            return "Yahoo Mail"
+        elif "zoho.com" in host:
+            return "Zoho Mail"
+        elif "protonmail" in host:
+            return "ProtonMail"
+        elif "fastmail" in host:
+            return "Fastmail"
+    return "Unknown or Custom Provider"
+
+
 
 # ==== Standalone test runner code (from previous successful iteration for ctrl+w) ====
 async def _run_key_binding_tests(app_class_to_test, log_func):
