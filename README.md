@@ -15,6 +15,6 @@ To set up the development environment and run tests:
 2.  **Run tests:**
     To execute the test suite, run:
     ```bash
-    poetry run task test
+    poetry run pytest
     ```
-    This command uses `taskipy` (defined in `pyproject.toml`) to invoke `pytest`.
+    This command directly invokes `pytest` using Poetry's script execution capabilities.
