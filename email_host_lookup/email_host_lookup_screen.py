@@ -4,9 +4,6 @@
 from typing import Optional, TYPE_CHECKING
 import asyncio
 import sys
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static # Added Static here
-# Input, Button, RichLog will be imported inside get_email_host_lookup_screen for now.
 
 if TYPE_CHECKING:
     from textual.screen import Screen
@@ -19,15 +16,14 @@ def get_email_host_lookup_screen() -> Optional["Screen"]:
     try:
         # Ensure all necessary imports for the screen are here
         from textual.screen import Screen
-        # Static is now imported at module level
-        from textual.widgets import Input, Button, RichLog
+        from textual.widgets import Input, Button, Static, RichLog # Changed TextLog to RichLog
         from textual.containers import Vertical
         import dns.resolver # Crucial for the screen's functionality
 
         class EmailHostLookupScreen(Screen):
             """Screen to input an email address and display its hosting provider."""
 
-            BINDINGS = [("ctrl+w", "app.quit", "Quit"), ("q", "app.quit", "Quit")] # Correct binding
+            BINDINGS = [("ctrl+w", "app.quit", "Quit")] # Correct binding
 
             def compose(self): # Full original compose
                 yield Vertical(
@@ -90,39 +86,110 @@ def detect_provider(mx_hosts: list[str]) -> str: # Full original method
     return "Unknown or Custom Provider"
 
 
-class EmailHostLookupApp(App):
-    DEFAULT_BINDINGS = [] # Override to remove all default App bindings
 
-    CSS = """
-    #prompt { margin-bottom: 1; }
-    #output_log { height: 7; }
-    """
-    def compose(self) -> ComposeResult:
-        yield Header()
-        screen = get_email_host_lookup_screen()
-        if screen is not None: # This condition is important
-            yield screen
-        else: # This is what happens if get_email_host_lookup_screen() returns None
-            # Static is imported at the module level
-            yield Static(
-                "Failed to create EmailHostLookupScreen. Check dependencies like 'dnspython'.",
-                id="error_message" # This Static widget does not have "#prompt"
-            )
-        yield Footer()
+# ==== Standalone test runner code (from previous successful iteration for ctrl+w) ====
+async def _run_key_binding_tests(app_class_to_test, log_func):
+    from textual.pilot import Pilot
 
-    # def action_do_nothing(self) -> None: # No longer needed with DEFAULT_BINDINGS approach
-    #     """Does nothing."""
-    #     pass
+    results = {
+        "q_does_not_quit": False,
+        "ctrl_q_does_not_quit": False,
+        "ctrl_w_quits": False,
+    }
+    log_func("Starting key binding tests...")
 
-# ==== Main entry point ====
-if __name__ == "__main__":
+    # Test 'q'
+    app_q = app_class_to_test()
     try:
-        # EmailHostLookupApp is now defined at module level
-        # Imports for App, ComposeResult, Header, Footer, Static are at module level
-        EmailHostLookupApp().run()
-    # ImportError for App, ComposeResult, Header, Footer, Static is now less likely here
-    # as they are imported at the top. However, dns.resolver or other screen-specific
-    # imports could still fail.
+        async with app_q.run_test(headless=True, size=(80, 24)) as pilot_q:
+            await pilot_q.pause(0.2)
+            log_func("  Testing 'q': Pressing 'q'. App should NOT quit.")
+            await pilot_q.press("q")
+            await pilot_q.pause(0.3)
+            _ = pilot_q.app.query_one("#prompt") # Changed to app.query_one
+            results["q_does_not_quit"] = True
+            log_func("  'q' test: OK (app did not quit).")
+    except Exception as e:
+        log_func(f"  'q' test: FAILED. Error: {e}")
+        results["q_does_not_quit"] = False
+
+    # Test 'ctrl+q'
+    app_ctrl_q = app_class_to_test()
+    try:
+        async with app_ctrl_q.run_test(headless=True, size=(80, 24)) as pilot_ctrl_q:
+            await pilot_ctrl_q.pause(0.2)
+            log_func("  Testing 'ctrl+q': Pressing 'ctrl+q'. App should NOT quit.")
+            await pilot_ctrl_q.press("ctrl+q")
+            await pilot_ctrl_q.pause(0.3)
+            _ = pilot_ctrl_q.app.query_one("#prompt") # Changed to app.query_one
+            results["ctrl_q_does_not_quit"] = True
+            log_func("  'ctrl+q' test: OK (app did not quit).")
+    except Exception as e:
+        log_func(f"  'ctrl+q' test: FAILED. Error: {e}")
+        results["ctrl_q_does_not_quit"] = False
+
+    # Test 'ctrl+w'
+    app_ctrl_w = app_class_to_test()
+    app_exited_ctrl_w = False
+    try:
+        async with app_ctrl_w.run_test(headless=True, size=(80, 24)) as pilot_ctrl_w:
+            await pilot_ctrl_w.pause(0.2)
+            log_func("  Testing 'ctrl+w': Pressing 'ctrl+w'. App SHOULD quit.")
+            await pilot_ctrl_w.press("ctrl+w")
+            await pilot_ctrl_w.pause(0.5)
+        app_exited_ctrl_w = True
+        log_func("  'ctrl+w' test: OK (run_test block completed after ctrl+w).")
+    except Exception as e:
+        log_func(f"  'ctrl+w' test: FAILED. Error: {e}")
+        app_exited_ctrl_w = False
+    results["ctrl_w_quits"] = app_exited_ctrl_w
+
+    log_func("\nKey binding test results summary:")
+    log_func(f"  q_does_not_quit: {results['q_does_not_quit']}")
+    log_func(f"  ctrl_q_does_not_quit: {results['ctrl_q_does_not_quit']}")
+    log_func(f"  ctrl_w_quits: {results['ctrl_w_quits']}")
+
+    all_passed = all(results.values())
+    log_func(f"\nAll verifications passed: {all_passed}")
+    return all_passed
+
+# ==== Main entry point (from previous successful iteration) ====
+if __name__ == "__main__":
+    run_tests_flag = "--test-bindings" in sys.argv
+
+    try:
+        from textual.app import App, ComposeResult
+        from textual.widgets import Header, Footer
+
+        class EmailHostLookupApp(App):
+            CSS = """
+            #prompt { margin-bottom: 1; }
+            #output_log { height: 7; }
+            """
+            def compose(self) -> ComposeResult:
+                yield Header()
+                screen = get_email_host_lookup_screen()
+                if screen is not None: # This condition is important
+                    yield screen
+                else: # This is what happens if get_email_host_lookup_screen() returns None
+                    from textual.widgets import Static
+                    yield Static(
+                        "Failed to create EmailHostLookupScreen. Check dependencies like 'dnspython'.",
+                        id="error_message" # This Static widget does not have "#prompt"
+                    )
+                yield Footer()
+
+        if run_tests_flag:
+            try:
+                from textual.pilot import Pilot
+            except ImportError:
+                print("Could not import textual.pilot.Pilot. Testing framework requires full Textual install.")
+                sys.exit(1)
+            test_success = asyncio.run(_run_key_binding_tests(EmailHostLookupApp, print))
+            if not test_success:
+                sys.exit(1)
+        else:
+            EmailHostLookupApp().run()
     except ImportError as e:
         print("This script requires Textual and dnspython.\nInstall them with:\n  pip install textual dnspython")
         print(f"Error: {e}")
