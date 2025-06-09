@@ -2,8 +2,8 @@
 name = "email_host_lookup"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"] # Please replace with actual author if known
-readme = "README.txt"
+authors = ["Takashi Sasaki <takashi316@gmail.com>"] # Please replace with actual author if known
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9" # Upgraded to support latest pytest
